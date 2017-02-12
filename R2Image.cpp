@@ -273,11 +273,11 @@ Brighten(double factor)
  *  {-1, 0, 1}       {-1 x 1, 0 x 1, 1 x 1} x = 1
  *                    y = -1  y = 0, y = 1
  */
-int SobelXKernel(int x, int y) {
-  if(y == 0) {
-    return x * 2;
+int SobelXWeight(int x, int y) {
+  if(x == 0) {
+    return y * 2;
   } else {
-    return x * 1;
+    return y * 1;
   }
 }
 
@@ -286,37 +286,70 @@ SobelX(void)
 {
   // alloc image
   R2Image oldImg(*this);
-  R2Pixel halfPixel(0.5,0.5,0.5,1);
+
+  // half pixel to be added after computation
+  R2Pixel halfPix(0.5,0.5,0.5,1);
+
   // for all the pixels in the image
   for(int x = 1; x < width - 3; x++) {
     for(int y = 1; y < height -3; y++) {
+
       // find the weight thru kernel
       for(int i = -1; i < 2; i++) {
         for(int j = -1; j < 2; j++) {
-          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelXKernel(i, j);
-          Pixel(i, j) += halfPixel;
+          // new image's pixel is calculated using the kernel
+          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelXWeight(i, j);
+          Pixel(i, j) += halfPix; // add half pix
         }
       }
       Pixel(x,y).Clamp();
-
     }
   }
 
-  // FILL IN IMPLEMENTATION HERE (REMOVE PRINT STATEMENT WHEN DONE)
-  //fprintf(stderr, "SobelX() not implemented\n");
+}
+
+/*
+ * input: int x, -1 <= x <= 1
+ *        int y, -1 <= y <= 1
+ * output: weights, which are calculated as such:
+ *  {-1, -2, +1}       {-1 x 1, -1 x 2, -1 x 1} x = -1
+ *  { 0,  0,  0}  ==>  { 0 x 1,  0 x 2,  0 x 1} x = 0
+ *  {+1, +2, +1}       { 1 x 1,  1 x 2,  1 x 1} x = 1
+ *                      y = -1   y = 0,  y = 1
+ */
+int SobelYWeight(int x, int y) {
+  if(y == 0) {
+    return x * 2;
+  } else {
+    return x * 1;
+  }
 }
 
 void R2Image::
 SobelY(void)
 {
-  // Apply the Sobel oprator to the image in Y direction
-  // matrix in the y direction:
-  // +1 +2 +1
-  //  0  0  0
-  // -1 -2 +1
+  // alloc image
+  R2Image oldImg(*this);
 
-  // FILL IN IMPLEMENTATION HERE (REMOVE PRINT STATEMENT WHEN DONE)
-  fprintf(stderr, "SobelY() not implemented\n");
+  // half pixel to be added after computation
+  R2Pixel halfPix(0.5,0.5,0.5,1);
+
+  // for all the pixels in the image
+  for(int x = 1; x < width - 3; x++) {
+    for(int y = 1; y < height -3; y++) {
+
+      // find the weight thru kernel
+      for(int i = -1; i < 2; i++) {
+        for(int j = -1; j < 2; j++) {
+          // new image's pixel is calculated using the kernel
+          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelYWeight(i, j);
+          Pixel(i, j) += halfPix; // add half pix
+        }
+      }
+      Pixel(x,y).Clamp();
+    }
+  }
+
 }
 
 void R2Image::
