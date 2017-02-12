@@ -1,3 +1,2 @@
-# Computer Vision
-## AIT-Budapest Spring 17
+# Computer Vision (AIT-SP17)
 Author: Sooji Son
