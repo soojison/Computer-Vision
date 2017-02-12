@@ -273,7 +273,7 @@ Brighten(double factor)
  *  {-1, 0, 1}       {-1 x 1, 0 x 1, 1 x 1} x = 1
  *                    y = -1  y = 0, y = 1
  */
-int SobelXWeight(int x, int y) {
+int SobelXKernel(int x, int y) {
   if(x == 0) {
     return y * 2;
   } else {
@@ -293,12 +293,13 @@ SobelX(void)
   // for all the pixels in the image
   for(int x = 1; x < width - 3; x++) {
     for(int y = 1; y < height -3; y++) {
-
+      // the pixel has to be a blank slate before we put the new value
+      Pixel(x,y).Reset(0,0,0,1);
       // find the weight thru kernel
       for(int i = -1; i < 2; i++) {
         for(int j = -1; j < 2; j++) {
           // new image's pixel is calculated using the kernel
-          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelXWeight(i, j);
+          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelXKernel(i, j);
           Pixel(i, j) += halfPix; // add half pix
         }
       }
@@ -317,7 +318,7 @@ SobelX(void)
  *  {+1, +2, +1}       { 1 x 1,  1 x 2,  1 x 1} x = 1
  *                      y = -1   y = 0,  y = 1
  */
-int SobelYWeight(int x, int y) {
+int SobelYKernel(int x, int y) {
   if(y == 0) {
     return x * 2;
   } else {
@@ -337,12 +338,13 @@ SobelY(void)
   // for all the pixels in the image
   for(int x = 1; x < width - 3; x++) {
     for(int y = 1; y < height -3; y++) {
-
+      // the pixel has to be a blank slate before we put the new value
+      Pixel(x,y).Reset(0,0,0,1);
       // find the weight thru kernel
       for(int i = -1; i < 2; i++) {
         for(int j = -1; j < 2; j++) {
           // new image's pixel is calculated using the kernel
-          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelYWeight(i, j);
+          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelYKernel(i, j);
           Pixel(i, j) += halfPix; // add half pix
         }
       }
@@ -396,13 +398,50 @@ Harris(double sigma)
 }
 
 
+/*
+ * input: int x, -1 <= x <= 1
+ *        int y, -1 <= y <= 1
+ * output: weights, which are calculated as such:
+ *  {     0, -1/4,     0}
+ *  { -1/4,     2,  -1/4}
+ *  {     0, -1/4,     0}
+ */
+ double SharpenKernel(int x, int y) {
+   if(x == 0 && y == 0) {
+     return 2.0;
+   } else if(x == 0 || y == 0) {
+     return -0.25;
+   } else {
+     return 0;
+   }
+ }
+
 void R2Image::
 Sharpen()
 {
-  // Sharpen an image using a linear filter. Use a kernel of your choosing.
+  // alloc image
+  R2Image oldImg(*this);
 
-  // FILL IN IMPLEMENTATION HERE (REMOVE PRINT STATEMENT WHEN DONE)
-  fprintf(stderr, "Sharpen() not implemented\n");
+  // half pixel to be added after computation
+  R2Pixel halfPix(0.5,0.5,0.5,1);
+
+  // for all the pixels in the image
+  for(int x = 1; x < width - 3; x++) {
+    for(int y = 1; y < height -3; y++) {
+      // the pixel has to be a blank slate before we put the new value
+      Pixel(x,y).Reset(0,0,0,1);
+      // find the weight thru kernel
+      for(int i = -1; i < 2; i++) {
+        for(int j = -1; j < 2; j++) {
+          // new image's pixel is calculated using the kernel
+          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SharpenKernel(i, j);
+          Pixel(i, j) += halfPix; // add half pix
+        }
+      }
+      Pixel(x,y).Clamp();
+    }
+  }
+
 }
 
 
