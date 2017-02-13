@@ -299,8 +299,8 @@ SobelX(void)
       for(int i = -1; i < 2; i++) {
         for(int j = -1; j < 2; j++) {
           // new image's pixel is calculated using the kernel
-          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelXKernel(i, j);
-          Pixel(i, j) += halfPix; // add half pix
+          Pixel(x,y) += oldImg.Pixel(x+i,y+j) * SobelXKernel(i,j);
+          Pixel(i,j) += halfPix; // add half pix
         }
       }
       Pixel(x,y).Clamp();
@@ -344,8 +344,8 @@ SobelY(void)
       for(int i = -1; i < 2; i++) {
         for(int j = -1; j < 2; j++) {
           // new image's pixel is calculated using the kernel
-          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SobelYKernel(i, j);
-          Pixel(i, j) += halfPix; // add half pix
+          Pixel(x,y) += oldImg.Pixel(x+i,y+j) * SobelYKernel(i,j);
+          Pixel(i,j) += halfPix; // add half pix
         }
       }
       Pixel(x,y).Clamp();
@@ -434,8 +434,8 @@ Sharpen()
       for(int i = -1; i < 2; i++) {
         for(int j = -1; j < 2; j++) {
           // new image's pixel is calculated using the kernel
-          Pixel(x,y) += oldImg.Pixel(x+i, y+j) * SharpenKernel(i, j);
-          Pixel(i, j) += halfPix; // add half pix
+          Pixel(x,y) += oldImg.Pixel(x+i,y+j) * SharpenKernel(i,j);
+          Pixel(i,j) += halfPix; // add half pix
         }
       }
       Pixel(x,y).Clamp();
