@@ -375,20 +375,53 @@ ChangeSaturation(double factor)
   fprintf(stderr, "ChangeSaturation(%g) not implemented\n", factor);
 }
 
-// Sigma is the standard deviation
-//
-int GaussianKernel(int x, int y) {
-
-}
 // Linear filtering ////////////////////////////////////////////////
+
+/*
+ * Gaussian distribution in 1-D form:
+ * G(x) = (1 / sqrt(2 * pi) * sigma) * e^(-x^2 / 2 * sigma^2)
+ */
+double Gaussian(double sigma, int i) {
+  double x = i = (3 * sigma);
+  // exp(double x) returns the base-e exponential function of x
+  double numerator = exp(-(x * x) / (2 * sigma * sigma));
+  // sqrt(x) = x^(1/2) = x^(0.5)
+  double denominator = pow(2 * M_PI, 0.5) * sigma;
+  return numerator / denominator;
+}
+
 void R2Image::
 Blur(double sigma)
 {
   // initial calculations
-  int kernelSize = (6 * sigma) + 1;
+  // --- TODO: how tf do you handle sigma as an int?
+  //           can you just cast it to an int or do some special calcs
+  int kernelSize = (int) (6 * sigma) + 1;
+  int weights = [kernelSize];
+  double val = 0;
 
-  // create a temp image
+  for (int i = 0; i < kernelSize; i++) {
+    weights[i] = Gaussian(sigma, i);
+    val += weight;
+  }
+
+  // Normalize kernel
+  // --- TODO: there was a way of not normalizing later
+  //           but ensuring the weights add up to 1 during the process
+  for (int i = 0; i < kernelSize; i++) {
+    weights[i] /= val;
+  }
+
+  // Create a temp image
   R2Image tempImg(width, height);
+
+  // First pass in the x direction
+  // --- TODO: do you also need to ignore first few pixels?
+  for(int i = 0; i < width; i++) {
+    for(int j = 0; j < height; j++) {
+      for(int lx = -3 * (int) sigma; lx <= 3 * (int) sigma; lx++) {
+  }
+  // second pass in the y direction
 }
 
 
