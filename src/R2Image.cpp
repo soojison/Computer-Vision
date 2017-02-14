@@ -375,15 +375,20 @@ ChangeSaturation(double factor)
   fprintf(stderr, "ChangeSaturation(%g) not implemented\n", factor);
 }
 
+// Sigma is the standard deviation
+//
+int GaussianKernel(int x, int y) {
 
+}
 // Linear filtering ////////////////////////////////////////////////
 void R2Image::
 Blur(double sigma)
 {
-  // Gaussian blur of the image. Separable solution is preferred
+  // initial calculations
+  int kernelSize = (6 * sigma) + 1;
 
-  // FILL IN IMPLEMENTATION HERE (REMOVE PRINT STATEMENT WHEN DONE)
-  fprintf(stderr, "Blur(%g) not implemented\n", sigma);
+  // create a temp image
+  R2Image tempImg(width, height);
 }
 
 
