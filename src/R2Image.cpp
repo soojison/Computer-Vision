@@ -396,20 +396,19 @@ Blur(double sigma)
   // initial calculations
   // --- TODO: how tf do you handle sigma as an int?
   //           can you just cast it to an int or do some special calcs
-  int kernelSize = (int) (6 * sigma) + 1;
+  int sigmaInt = (int) sigma;
+  int kernelSize = (6 * sigmaInt) + 1;
   int weights = [kernelSize];
-  double val = 0;
-
+  double sum = 0;
   for (int i = 0; i < kernelSize; i++) {
-    weights[i] = Gaussian(sigma, i);
-    val += weight;
+    weight = Gaussian(sigma, i);
+    weights[i] = weight;
+    sum += weight;
   }
 
   // Normalize kernel
-  // --- TODO: there was a way of not normalizing later
-  //           but ensuring the weights add up to 1 during the process
   for (int i = 0; i < kernelSize; i++) {
-    weights[i] /= val;
+    weights[i] /= sum;
   }
 
   // Create a temp image
@@ -417,9 +416,14 @@ Blur(double sigma)
 
   // First pass in the x direction
   // --- TODO: do you also need to ignore first few pixels?
-  for(int i = 0; i < width; i++) {
-    for(int j = 0; j < height; j++) {
-      for(int lx = -3 * (int) sigma; lx <= 3 * (int) sigma; lx++) {
+  int val = 0;
+  for(int x = 0; i < width; i++) {
+    for(int y = 0; j < height; j++) {
+      for(int lx = -3 * sigmaInt; lx <= 3 * sigmaInt; lx++) {
+        val += Pixel(x+lx, y) * weights[lx + (3 * sigmaInt)];
+      }
+    tempImg.SetPixel(x, y, val);
+    }
   }
   // second pass in the y direction
 }
