@@ -10,6 +10,9 @@
 #include "svd.h"
 
 
+#include <algorithm>
+
+
 
 ////////////////////////////////////////////////////////////////////////
 // Constructors/Destructors
@@ -394,14 +397,14 @@ void R2Image::
 Blur(double sigma)
 {
   // initial calculations
-  // --- TODO: how tf do you handle sigma as an int?
-  //           can you just cast it to an int or do some special calcs
+  // --- TODO: can you just cast it to an int or
+  //           does it require some special calculations in this case?
   int sigmaInt = (int) sigma;
   int kernelSize = (6 * sigmaInt) + 1;
-  int weights = [kernelSize];
+  double weights[kernelSize];
   double sum = 0;
   for (int i = 0; i < kernelSize; i++) {
-    weight = Gaussian(sigma, i);
+    double weight = Gaussian(sigma, i);
     weights[i] = weight;
     sum += weight;
   }
@@ -416,16 +419,28 @@ Blur(double sigma)
 
   // First pass in the x direction
   // --- TODO: do you also need to ignore first few pixels?
-  int val = 0;
-  for(int x = 0; i < width; i++) {
-    for(int y = 0; j < height; j++) {
+  for(int x = 0; x < width; x++) {
+    for(int y = 0; y < height; y++) {
+      R2Pixel pix;
       for(int lx = -3 * sigmaInt; lx <= 3 * sigmaInt; lx++) {
-        val += Pixel(x+lx, y) * weights[lx + (3 * sigmaInt)];
+        // TODO: so adding this line made things so much better. why.
+        int val = std::min(std::max(x + lx, 0), width-1);
+        pix += Pixel(val, y) * weights[lx + (3 * sigmaInt)];
       }
-    tempImg.SetPixel(x, y, val);
+    tempImg.SetPixel(x, y, pix);
     }
   }
   // second pass in the y direction
+  for(int x = 0; x < width; x++) {
+    for(int y = 0; y < height; y++) {
+      R2Pixel pix;
+      for(int ly = -3 * sigmaInt; ly <= 3 * sigmaInt; ly++) {
+        int val = std::min(std::max(y+ly, 0), height-1);
+        pix += tempImg.Pixel(x, val) * weights[ly + (3 * sigmaInt)];
+      }
+      SetPixel(x, y, pix);
+    }
+  }
 }
 
 
