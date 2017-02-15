@@ -1,7 +1,15 @@
+# Get rid of those pesky files
 .DS_Store
+
+# Ignore the output files
 *.o
 *.a
 imgpro
+
+# Ignore the images
 input/
 output/
+
+# Ignore the HW submission files
 SoojiSonHW/
+*.zip
