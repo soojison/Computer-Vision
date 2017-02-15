@@ -9,7 +9,7 @@
 #include "R2Image.h"
 #include "svd.h"
 
-
+#include <vector>
 #include <algorithm>
 
 
@@ -396,13 +396,16 @@ double Gaussian(double sigma, int i) {
 void R2Image::
 Blur(double sigma)
 {
-  // initial calculations
-  // --- TODO: can you just cast it to an int or
-  //           does it require some special calculations in this case?
+  // Initial calculations
   int sigmaInt = (int) sigma;
   int kernelSize = (6 * sigmaInt) + 1;
-  double weights[kernelSize];
+  // Better way of doing: double weights[kernelSize];
+  std::vector<double> weights;
+  weights.resize(kernelSize);
+  // Variable to hold the sum of weights to normalize the kernel
   double sum = 0;
+
+  // Create the kernel with appropriate weights
   for (int i = 0; i < kernelSize; i++) {
     double weight = Gaussian(sigma, i);
     weights[i] = weight;
@@ -414,17 +417,25 @@ Blur(double sigma)
     weights[i] /= sum;
   }
 
-  // Create a temp image
+  // Create a blank temp image
   R2Image tempImg(width, height);
 
   // First pass in the x direction
-  // --- TODO: do you also need to ignore first few pixels?
   for(int x = 0; x < width; x++) {
     for(int y = 0; y < height; y++) {
       R2Pixel pix;
       for(int lx = -3 * sigmaInt; lx <= 3 * sigmaInt; lx++) {
-        // TODO: so adding this line made things so much better. why.
-        int val = std::min(std::max(x + lx, 0), width-1);
+        // Border processing: if x+lx is less than 0, then use 0.
+        //                    if greater than width-1, use width-1
+        //                    otherwise, use the value of x+lx
+        int val;
+        if ( x+lx < 0 ) {
+          val = 0;
+        } else if ( x+lx > width-1 ) {
+          val = width-1;
+        } else {
+          val = x+lx;
+        }
         pix += Pixel(val, y) * weights[lx + (3 * sigmaInt)];
       }
     tempImg.SetPixel(x, y, pix);
@@ -435,7 +446,15 @@ Blur(double sigma)
     for(int y = 0; y < height; y++) {
       R2Pixel pix;
       for(int ly = -3 * sigmaInt; ly <= 3 * sigmaInt; ly++) {
-        int val = std::min(std::max(y+ly, 0), height-1);
+        // Same border processing stuff
+        int val;
+        if ( y+ly < 0 ) {
+          val = 0;
+        } else if ( y+ly > height-1 ) {
+          val = height-1;
+        } else {
+          val = y+ly;
+        }
         pix += tempImg.Pixel(x, val) * weights[ly + (3 * sigmaInt)];
       }
       SetPixel(x, y, pix);
