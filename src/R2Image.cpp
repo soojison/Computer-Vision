@@ -385,7 +385,7 @@ ChangeSaturation(double factor)
  * G(x) = (1 / sqrt(2 * pi) * sigma) * e^(-x^2 / 2 * sigma^2)
  */
 double Gaussian(double sigma, int i) {
-  double x = i = (3 * sigma);
+  double x = i - (3 * sigma);
   // exp(double x) returns the base-e exponential function of x
   double numerator = exp(-(x * x) / (2 * sigma * sigma));
   // sqrt(x) = x^(1/2) = x^(0.5)
@@ -402,19 +402,18 @@ Blur(double sigma)
   // Better way of doing: double weights[kernelSize];
   std::vector<double> weights;
   weights.resize(kernelSize);
-  // Variable to hold the sum of weights to normalize the kernel
-  double sum = 0;
+  double sumOfWeights = 0;
 
   // Create the kernel with appropriate weights
   for (int i = 0; i < kernelSize; i++) {
     double weight = Gaussian(sigma, i);
     weights[i] = weight;
-    sum += weight;
+    sumOfWeights += weight;
   }
 
   // Normalize kernel
   for (int i = 0; i < kernelSize; i++) {
-    weights[i] /= sum;
+    weights[i] /= sumOfWeights;
   }
 
   // Create a blank temp image
