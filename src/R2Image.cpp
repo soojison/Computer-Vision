@@ -461,7 +461,31 @@ Blur(double sigma)
   }
 }
 
+void R2Image::
+HighPassSharpen()
+{
+  R2Image original(*this);
 
+  Blur(2);
+  
+  R2Image highPass(width, height);
+  for(int i = 0; i < width; i++) {
+    for(int j = 0; j < height; j++) {
+      highPass.Pixel(i,j) = original.Pixel(i,j) - Pixel(i,j);
+    }
+  }
+
+  R2Image final(width, height);
+  for(int i = 0; i < width; i++) {
+    for(int j = 0; j < height; j++) {
+      final.Pixel(i,j) = highPass.Pixel(i,j) * 2 + Pixel(i,j);
+      final.Pixel(i,j).Clamp();
+    }
+  }
+
+  (*this) = final;
+}
+  
 void R2Image::
 Harris(double sigma)
 {

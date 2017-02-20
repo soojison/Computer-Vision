@@ -219,6 +219,10 @@ main(int argc, char **argv)
       image->blendOtherImageHomography(other_image);
       delete other_image;
     }
+    else if (!strcmp(*argv, "-highPassSharpen")) {
+      argv++, argc--;
+      image->HighPassSharpen();
+    }
     else {
       // Unrecognized program argument
       fprintf(stderr, "image: invalid option: %s\n", *argv);
