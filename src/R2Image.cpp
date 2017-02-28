@@ -462,11 +462,11 @@ Blur(double sigma)
 }
 
 void R2Image::
-HighPassSharpen()
+HighPassSharpen(double sigma, double contrast)
 {
   R2Image original(*this);
 
-  Blur(2);
+  Blur(sigma);
   
   R2Image highPass(width, height);
   for(int i = 0; i < width; i++) {
@@ -478,7 +478,7 @@ HighPassSharpen()
   R2Image final(width, height);
   for(int i = 0; i < width; i++) {
     for(int j = 0; j < height; j++) {
-      final.Pixel(i,j) = highPass.Pixel(i,j) * 2 + Pixel(i,j);
+      final.Pixel(i,j) = highPass.Pixel(i,j) * contrast + Pixel(i,j);
       final.Pixel(i,j).Clamp();
     }
   }

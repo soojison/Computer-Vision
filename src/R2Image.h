@@ -79,7 +79,7 @@ class R2Image {
   void blendOtherImageHomography(R2Image * otherImage);
 
   // Extra credits
-  void HighPassSharpen(void);
+  void HighPassSharpen(double sigma, double contrast);
 
   // File reading/writing
   int Read(const char *filename);

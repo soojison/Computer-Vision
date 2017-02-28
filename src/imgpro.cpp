@@ -44,7 +44,8 @@ static char options[] =
 "  -blur <real:sigma>\n"
 "  -sharpen \n"
 "  -matchTranslation <file:other_image>\n"
-"  -matchHomography <file:other_image>\n";
+"  -matchHomography <file:other_image>\n"
+"  -highPassSharpen <real:sigma> <real:contrast>\n";
 
 
 static void
@@ -220,8 +221,12 @@ main(int argc, char **argv)
       delete other_image;
     }
     else if (!strcmp(*argv, "-highPassSharpen")) {
-      argv++, argc--;
-      image->HighPassSharpen();
+      //argv++, argc--;
+      CheckOption(*argv, argc, 3);
+      double sigma = atof(argv[1]);
+      double contrast = atof(argv[2]);
+      argv += 3, argc -= 3;
+      image->HighPassSharpen(sigma, contrast);
     }
     else {
       // Unrecognized program argument
