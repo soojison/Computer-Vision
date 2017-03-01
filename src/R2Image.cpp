@@ -395,6 +395,23 @@ double Gaussian(double sigma, int i) {
   return numerator / denominator;
 }
 
+/*
+ * returns a value that is within the bound
+ * if the value is less than the minimum, it returns the minimum
+ * if the value is greater than the maximum, it returns the maximum
+ * if the value is within the bounds, it returns the value
+ */
+int ValWithinBound(int val, int min, int max) {
+  if(val < min) {
+    return min;
+  } else if (val > max) {
+    return max;
+  } else {
+    return val;
+  }
+}
+
+
 void R2Image::
 Blur(double sigma)
 {
@@ -429,14 +446,7 @@ Blur(double sigma)
         // Border processing: if x+lx is less than 0, then use 0.
         //                    if greater than width-1, use width-1
         //                    otherwise, use the value of x+lx
-        int val;
-        if ( x+lx < 0 ) {
-          val = 0;
-        } else if ( x+lx > width-1 ) {
-          val = width-1;
-        } else {
-          val = x+lx;
-        }
+        int val = ValWithinBound(x+lx, 0, width-1);
         pix += Pixel(val, y) * weights[lx + (3 * sigmaInt)];
       }
     tempImg.SetPixel(x, y, pix);
@@ -448,14 +458,7 @@ Blur(double sigma)
       R2Pixel pix;
       for(int ly = -3 * sigmaInt; ly <= 3 * sigmaInt; ly++) {
         // Same border processing stuff
-        int val;
-        if ( y+ly < 0 ) {
-          val = 0;
-        } else if ( y+ly > height-1 ) {
-          val = height-1;
-        } else {
-          val = y+ly;
-        }
+        int val = ValWithinBound(y+ly, 0, height-1);
         pix += tempImg.Pixel(x, val) * weights[ly + (3 * sigmaInt)];
       }
       SetPixel(x, y, pix);
@@ -529,27 +532,102 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
   return harrisImg;
 }
 
-/*
- * idea: you have a point with values assigned (= sum of RGB components)
- * compare the points so you know which one has more priority than the other
- * add the points into a priority queue so you choose the 150 most important features
- *
- * function to: mark the feature point
- *  radius: block of pixel of size 10 x 10
- *  color the pixels red or something, also make sure to handle edges accordingly
- *
- * function to get the feature points from the harris image
- *  add to queue with its values assigned and then
- */
+typedef struct Point {
+  int x;
+  int y;
+  float RGBsum;
+} Point;
+
+// if p1 comes before p2, returns true
+struct PointComparator {
+  bool operator()(Point a, Point b) {
+    return a.RGBsum < b.RGBsum;
+  }
+};
+
+
+
+void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int numFeaturePoints) {
+  int width = harris->Width();
+  int height = harris->Height();
+  const int minDistance = 10;
+  // to be returned -- a vector of feature points
+
+  // initializing the data structure that tells us whether
+  // the point is a valid feature point or not
+  bool allowed[width][height];
+  for(int i = 0; i < width; i++) {
+    for(int j = 0; j < height; j++) {
+      allowed[i][j] = true;
+    }
+  }
+
+  // second argument vector is there bc
+  // the C++ STL PQ is a container adapter
+  std::priority_queue<Point, std::vector<Point>, PointComparator> pq;
+
+  // fill out the PQ with the pixels' info
+  // since we are using a PQ, the points should be ordered
+  // based on their priority -- intensity of the pixel
+  for(int i = 0; i < width; i++) {
+    for(int j = 0; j < height; j++) {
+      R2Pixel cur = harris->Pixel(i,j);
+      Point p;
+      p.x = i;
+      p.y = j;
+      p.RGBsum = cur.Red() + cur.Green() + cur.Blue();
+      pq.push(p);
+    }
+  }
+
+  int numPointsSoFar = 0;
+  while(numPointsSoFar < numFeaturePoints) {
+    // get the point with highest priority so far
+    Point p = pq.top();
+    // check whether the point is at least 10px away from another FP
+    if(allowed[p.x][p.y]) {
+      featurePoints[numPointsSoFar] = p;
+      // invalidate the points within 10 pixels distance
+      for(int i = -1 * minDistance; i <= minDistance; i++) {
+        for(int j = -1 * minDistance; j <= minDistance; j++) {
+          int xi = ValWithinBound(p.x+i, 0, width-1);
+          int yj = ValWithinBound(p.y+j, 0, height-1);
+          allowed[xi][yj] = false;
+        }
+      }
+      numPointsSoFar++;
+    }
+    pq.pop();
+  }
+}
+
+void MarkPoints(R2Image &img, Point p, R2Pixel color) {
+
+  const int size = 5;
+  for(int i = -1 * size; i <= size; i++) {
+    for(int j = -1 * size; j <= size; j++) {
+      int x = ValWithinBound(p.x + i, 0, img.Width());
+      int y = ValWithinBound(p.y + j, 0, img.Height());
+      img.SetPixel(x,y,color);
+    }
+  }
+
+}
 
 void R2Image::
 Harris(double sigma)
 {
     // Harris corner detector. Make use of the previously developed filters, such as the Gaussian blur filter
 	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
-  const int numFeaturePoint = 150;
+  //const int numFeaturePoint = 150;
   R2Image harris = generateHarrisImage(this, sigma);
-  printf("computed Harris Image");
+
+  const int numFeaturePoints = 150;
+  std::vector<Point> featurePoints(numFeaturePoints);
+  getFeaturePoints(&harris, featurePoints, numFeaturePoints);
+  for(int i = 0; i < numFeaturePoints; i++) {
+    MarkPoints(*this, featurePoints[i], R2Pixel(1, 0, 0, 1));
+  }
 }
 
 
