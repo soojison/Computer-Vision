@@ -486,47 +486,26 @@ HighPassSharpen(double sigma, double contrast)
   (*this) = final;
 }
   
-R2Image generateHarrisImage(double sigma) {
-  R2Image Ix2(*this);
-  R2Image Iy2(*this);
-}
-
-void R2Image::
-Harris(double sigma)
-{
-    // Harris corner detector. Make use of the previously developed filters, such as the Gaussian blur filter
-	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
-
-  R2Image original(*this);
-
-  /* 
-   * Operation for Ix2
-   */
-  // apply sobelX to the image
-  SobelX();
-  // Ix2 is this (not yet, but will be)
-  R2Image Ix2(*this);
-
-  /* 
-   * Operation for Iy2
-   */
-  (*this) = original;
-  // apply sobelY to the image
-  SobelY();
-  // Iy2 is this (not yet, but will be)
-  R2Image Iy2(*this);
-
-  /*
-   * Operation for IxIy
-   */
-  // Create a blank temp image
+R2Image generateHarrisImage(R2Image* orig, double sigma) {
+  R2Image Ix2(*orig);
+  R2Image Iy2(*orig);
+  int width = orig->Width();
+  int height = orig->Height();
   R2Image IxIy(width, height);
-  // Fill in pixels for IxIy, Square Ix2, Square Iy2
+  R2Image harrisImg(width, height);
+
+  Ix2.SobelX();
+  Iy2.SobelY();
+
+  R2Pixel ix;
+  R2Pixel iy;
   for(int i = 0; i < width; i++) {
     for(int j = 0; j < height; j++) {
-      IxIy.Pixel(i,j) = Ix2.Pixel(i,j) * Iy2.Pixel(i,j);
-      Ix2.Pixel(i,j) *= Ix2.Pixel(i,j);
-      Iy2.Pixel(i,j) *= Iy2.Pixel(i,j);
+      ix = Ix2[i][j];
+      iy = Iy2[i][j];
+      IxIy[i][j] = ix * iy;
+      Ix2[i][j] = ix * ix;
+      Iy2[i][j] = iy * iy;
     }
   }
 
@@ -534,20 +513,30 @@ Harris(double sigma)
   Iy2.Blur(sigma);
   IxIy.Blur(sigma);
 
-  // Final Image
-  R2Image finalImg(width,height);
+  R2Pixel gray(0.5, 0.5, 0.5, 1);
+  R2Pixel tmp;
   for(int i = 0; i < width; i++) {
     for(int j = 0; j < height; j++) {
-      finalImg.Pixel(i,j) = Ix2.Pixel(i,j) * Iy2.Pixel(i,j)
-        - IxIy.Pixel(i,j) * IxIy.Pixel(i,j) - 0.04 *
-        ((Ix2.Pixel(i,j) + Iy2.Pixel(i,j)) * 
-         (Ix2.Pixel(i,j)+Iy2.Pixel(i,j)));
+      tmp = Ix2[i][j] * Iy2[i][j]
+                             - IxIy[i][j] * IxIy[i][j]
+                             - (0.04 * (Ix2[i][j] + Iy2[i][j])
+                                     * (Ix2[i][j] + Iy2[i][j]));
+     harrisImg.SetPixel(i,j,tmp);
     }
   }
 
-  (*this) = finalImg;
-  // FILL IN IMPLEMENTATION HERE (REMOVE PRINT STATEMENT WHEN DONE)
-  //fprintf(stderr, "Harris(%g) not implemented\n", sigma);
+  return harrisImg;
+}
+
+void R2Image::
+Harris(double sigma)
+{
+    // Harris corner detector. Make use of the previously developed filters, such as the Gaussian blur filter
+	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
+  const int numFeaturePoint = 150;
+  R2Image harris = generateHarrisImage(this, sigma);
+  printf("computed Harris Image");
+  (*this) = harris;
 }
 
 
