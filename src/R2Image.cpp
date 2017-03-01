@@ -11,6 +11,8 @@
 
 #include <vector>
 #include <algorithm>
+#include <queue>
+#include <vector>
 
 
 
@@ -467,7 +469,7 @@ HighPassSharpen(double sigma, double contrast)
   R2Image original(*this);
 
   Blur(sigma);
-  
+
   R2Image highPass(width, height);
   for(int i = 0; i < width; i++) {
     for(int j = 0; j < height; j++) {
@@ -485,7 +487,7 @@ HighPassSharpen(double sigma, double contrast)
 
   (*this) = final;
 }
-  
+
 R2Image generateHarrisImage(R2Image* orig, double sigma) {
   R2Image Ix2(*orig);
   R2Image Iy2(*orig);
@@ -524,9 +526,21 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
      harrisImg.SetPixel(i,j,tmp);
     }
   }
-
   return harrisImg;
 }
+
+/*
+ * idea: you have a point with values assigned (= sum of RGB components)
+ * compare the points so you know which one has more priority than the other
+ * add the points into a priority queue so you choose the 150 most important features
+ *
+ * function to: mark the feature point
+ *  radius: block of pixel of size 10 x 10
+ *  color the pixels red or something, also make sure to handle edges accordingly
+ *
+ * function to get the feature points from the harris image
+ *  add to queue with its values assigned and then
+ */
 
 void R2Image::
 Harris(double sigma)
@@ -536,7 +550,6 @@ Harris(double sigma)
   const int numFeaturePoint = 150;
   R2Image harris = generateHarrisImage(this, sigma);
   printf("computed Harris Image");
-  (*this) = harris;
 }
 
 
