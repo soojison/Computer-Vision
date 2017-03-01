@@ -276,56 +276,11 @@ Brighten(double factor)
  *  {-1, 0, 1}       {-1 x 1, 0 x 1, 1 x 1} x = 1
  *                    y = -1  y = 0, y = 1
  */
-int SobelXKernel(int x, int y) {
+int SobelYKernel(int x, int y) {
   if(x == 0) {
     return y * 2;
   } else {
     return y * 1;
-  }
-}
-
-void R2Image::
-SobelX(void)
-{
-  // alloc image
-  R2Image oldImg(*this);
-
-  // half pixel to be added after computation
-  R2Pixel halfPix(0.5,0.5,0.5,1);
-
-  // for all the pixels in the image
-  for(int x = 1; x < width - 3; x++) {
-    for(int y = 1; y < height -3; y++) {
-      // the pixel has to be a blank slate before we put the new value
-      Pixel(x,y).Reset(0,0,0,1);
-      // find the weight thru kernel
-      for(int i = -1; i < 2; i++) {
-        for(int j = -1; j < 2; j++) {
-          // new image's pixel is calculated using the kernel
-          Pixel(x,y) += oldImg.Pixel(x+i,y+j) * SobelXKernel(i,j);
-          Pixel(i,j) += halfPix; // add half pix
-        }
-      }
-      Pixel(x,y).Clamp();
-    }
-  }
-
-}
-
-/*
- * input: int x, -1 <= x <= 1
- *        int y, -1 <= y <= 1
- * output: weights, which are calculated as such:
- *  {-1, -2, +1}       {-1 x 1, -1 x 2, -1 x 1} x = -1
- *  { 0,  0,  0}  ==>  { 0 x 1,  0 x 2,  0 x 1} x = 0
- *  {+1, +2, +1}       { 1 x 1,  1 x 2,  1 x 1} x = 1
- *                      y = -1   y = 0,  y = 1
- */
-int SobelYKernel(int x, int y) {
-  if(y == 0) {
-    return x * 2;
-  } else {
-    return x * 1;
   }
 }
 
@@ -348,6 +303,51 @@ SobelY(void)
         for(int j = -1; j < 2; j++) {
           // new image's pixel is calculated using the kernel
           Pixel(x,y) += oldImg.Pixel(x+i,y+j) * SobelYKernel(i,j);
+          Pixel(i,j) += halfPix; // add half pix
+        }
+      }
+      Pixel(x,y).Clamp();
+    }
+  }
+
+}
+
+/*
+ * input: int x, -1 <= x <= 1
+ *        int y, -1 <= y <= 1
+ * output: weights, which are calculated as such:
+ *  {-1, -2, +1}       {-1 x 1, -1 x 2, -1 x 1} x = -1
+ *  { 0,  0,  0}  ==>  { 0 x 1,  0 x 2,  0 x 1} x = 0
+ *  {+1, +2, +1}       { 1 x 1,  1 x 2,  1 x 1} x = 1
+ *                      y = -1   y = 0,  y = 1
+ */
+int SobelXKernel(int x, int y) {
+  if(y == 0) {
+    return x * 2;
+  } else {
+    return x * 1;
+  }
+}
+
+void R2Image::
+SobelX(void)
+{
+  // alloc image
+  R2Image oldImg(*this);
+
+  // half pixel to be added after computation
+  R2Pixel halfPix(0.5,0.5,0.5,1);
+
+  // for all the pixels in the image
+  for(int x = 1; x < width - 3; x++) {
+    for(int y = 1; y < height -3; y++) {
+      // the pixel has to be a blank slate before we put the new value
+      Pixel(x,y).Reset(0,0,0,1);
+      // find the weight thru kernel
+      for(int i = -1; i < 2; i++) {
+        for(int j = -1; j < 2; j++) {
+          // new image's pixel is calculated using the kernel
+          Pixel(x,y) += oldImg.Pixel(x+i,y+j) * SobelXKernel(i,j);
           Pixel(i,j) += halfPix; // add half pix
         }
       }
@@ -486,14 +486,68 @@ HighPassSharpen(double sigma, double contrast)
   (*this) = final;
 }
   
+R2Image generateHarrisImage(double sigma) {
+  R2Image Ix2(*this);
+  R2Image Iy2(*this);
+}
+
 void R2Image::
 Harris(double sigma)
 {
     // Harris corner detector. Make use of the previously developed filters, such as the Gaussian blur filter
 	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
 
+  R2Image original(*this);
+
+  /* 
+   * Operation for Ix2
+   */
+  // apply sobelX to the image
+  SobelX();
+  // Ix2 is this (not yet, but will be)
+  R2Image Ix2(*this);
+
+  /* 
+   * Operation for Iy2
+   */
+  (*this) = original;
+  // apply sobelY to the image
+  SobelY();
+  // Iy2 is this (not yet, but will be)
+  R2Image Iy2(*this);
+
+  /*
+   * Operation for IxIy
+   */
+  // Create a blank temp image
+  R2Image IxIy(width, height);
+  // Fill in pixels for IxIy, Square Ix2, Square Iy2
+  for(int i = 0; i < width; i++) {
+    for(int j = 0; j < height; j++) {
+      IxIy.Pixel(i,j) = Ix2.Pixel(i,j) * Iy2.Pixel(i,j);
+      Ix2.Pixel(i,j) *= Ix2.Pixel(i,j);
+      Iy2.Pixel(i,j) *= Iy2.Pixel(i,j);
+    }
+  }
+
+  Ix2.Blur(sigma);
+  Iy2.Blur(sigma);
+  IxIy.Blur(sigma);
+
+  // Final Image
+  R2Image finalImg(width,height);
+  for(int i = 0; i < width; i++) {
+    for(int j = 0; j < height; j++) {
+      finalImg.Pixel(i,j) = Ix2.Pixel(i,j) * Iy2.Pixel(i,j)
+        - IxIy.Pixel(i,j) * IxIy.Pixel(i,j) - 0.04 *
+        ((Ix2.Pixel(i,j) + Iy2.Pixel(i,j)) * 
+         (Ix2.Pixel(i,j)+Iy2.Pixel(i,j)));
+    }
+  }
+
+  (*this) = finalImg;
   // FILL IN IMPLEMENTATION HERE (REMOVE PRINT STATEMENT WHEN DONE)
-  fprintf(stderr, "Harris(%g) not implemented\n", sigma);
+  //fprintf(stderr, "Harris(%g) not implemented\n", sigma);
 }
 
 
