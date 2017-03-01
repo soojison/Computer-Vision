@@ -308,7 +308,7 @@ SobelY(void)
           Pixel(i,j) += halfPix; // add half pix
         }
       }
-      Pixel(x,y).Clamp();
+      //Pixel(x,y).Clamp();
     }
   }
 
@@ -353,7 +353,7 @@ SobelX(void)
           Pixel(i,j) += halfPix; // add half pix
         }
       }
-      Pixel(x,y).Clamp();
+      //Pixel(x,y).Clamp();
     }
   }
 
@@ -525,8 +525,10 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
       tmp = Ix2[i][j] * Iy2[i][j]
                              - IxIy[i][j] * IxIy[i][j]
                              - (0.04 * (Ix2[i][j] + Iy2[i][j])
-                                     * (Ix2[i][j] + Iy2[i][j]));
+                                     * (Ix2[i][j] + Iy2[i][j]))
+                             + gray ;
      harrisImg.SetPixel(i,j,tmp);
+
     }
   }
   return harrisImg;
@@ -628,6 +630,7 @@ Harris(double sigma)
   for(int i = 0; i < numFeaturePoints; i++) {
     MarkPoints(*this, featurePoints[i], R2Pixel(1, 0, 0, 1));
   }
+  //(*this) = harris;
 }
 
 
