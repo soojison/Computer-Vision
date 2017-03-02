@@ -527,8 +527,8 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
                              - (0.04 * (Ix2[i][j] + Iy2[i][j])
                                      * (Ix2[i][j] + Iy2[i][j]))
                              + gray ;
-     harrisImg.SetPixel(i,j,tmp);
-
+      tmp.Clamp();
+      harrisImg.SetPixel(i,j,tmp);
     }
   }
   return harrisImg;
@@ -553,7 +553,6 @@ void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int nu
   int width = harris->Width();
   int height = harris->Height();
   const int minDistance = 10;
-  // to be returned -- a vector of feature points
 
   // initializing the data structure that tells us whether
   // the point is a valid feature point or not
@@ -628,7 +627,7 @@ Harris(double sigma)
   std::vector<Point> featurePoints(numFeaturePoints);
   getFeaturePoints(&harris, featurePoints, numFeaturePoints);
   for(int i = 0; i < numFeaturePoints; i++) {
-    MarkPoints(*this, featurePoints[i], R2Pixel(1, 0, 0, 1));
+    MarkPoints(*this, featurePoints[i], R2Pixel(0, 1, 0, 1));
   }
   //(*this) = harris;
 }
