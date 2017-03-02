@@ -627,7 +627,7 @@ Harris(double sigma)
   std::vector<Point> featurePoints(numFeaturePoints);
   getFeaturePoints(&harris, featurePoints, numFeaturePoints);
   for(int i = 0; i < numFeaturePoints; i++) {
-    MarkPoints(*this, featurePoints[i], R2Pixel(0, 1, 0, 1));
+    MarkPoints(*this, featurePoints[i], R2Pixel(1, 0, 1, 1));
   }
   //(*this) = harris;
 }
