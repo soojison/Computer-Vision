@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <queue>
 #include <vector>
+#include <unordered_map>
+#include <limits>
 
 
 
@@ -396,6 +398,52 @@ double Gaussian(double sigma, int i) {
 }
 
 /*
+ * input: int x, -1 <= x <= 1
+ *        int y, -1 <= y <= 1
+ * output: weights, which are calculated as such:
+ *  {     0, -1/4,     0}
+ *  { -1/4,     2,  -1/4}
+ *  {     0, -1/4,     0}
+ */
+ double SharpenKernel(int x, int y) {
+   if(x == 0 && y == 0) {
+     return 2.0;
+   } else if(x == 0 || y == 0) {
+     return -0.25;
+   } else {
+     return 0;
+   }
+ }
+
+void R2Image::
+Sharpen()
+{
+  // alloc image
+  R2Image oldImg(*this);
+
+  // half pixel to be added after computation
+  R2Pixel halfPix(0.5,0.5,0.5,1);
+
+  // for all the pixels in the image
+  for(int x = 1; x < width - 3; x++) {
+    for(int y = 1; y < height -3; y++) {
+      // the pixel has to be a blank slate before we put the new value
+      Pixel(x,y).Reset(0,0,0,1);
+      // find the weight thru kernel
+      for(int i = -1; i < 2; i++) {
+        for(int j = -1; j < 2; j++) {
+          // new image's pixel is calculated using the kernel
+          Pixel(x,y) += oldImg.Pixel(x+i,y+j) * SharpenKernel(i,j);
+          Pixel(i,j) += halfPix; // add half pix
+        }
+      }
+      Pixel(x,y).Clamp();
+    }
+  }
+
+}
+
+/*
  * returns a value that is within the bound
  * if the value is less than the minimum, it returns the minimum
  * if the value is greater than the maximum, it returns the maximum
@@ -552,7 +600,7 @@ struct PointComparator {
 void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int numFeaturePoints) {
   int width = harris->Width();
   int height = harris->Height();
-  const int minDistance = 10;
+  const int minDistance = 20;
 
   // initializing the data structure that tells us whether
   // the point is a valid feature point or not
@@ -612,8 +660,51 @@ void MarkPoints(R2Image &img, Point p, R2Pixel color) {
       img.SetPixel(x,y,color);
     }
   }
-
 }
+
+void R2Image::line(int x0, int x1, int y0, int y1, float r, float g, float b)
+{
+	if(x0>x1)
+	{
+		int x=y1;
+		y1=y0;
+		y0=x;
+
+		x=x1;
+		x1=x0;
+		x0=x;
+	}
+     int deltax = x1 - x0;
+     int deltay = y1 - y0;
+     float error = 0;
+     float deltaerr = 0.0;
+	 if(deltax!=0) deltaerr =fabs(float(float(deltay) / deltax));    // Assume deltax != 0 (line is not vertical),
+           // note that this division needs to be done in a way that preserves the fractional part
+     int y = y0;
+     for(int x=x0;x<=x1;x++)
+	 {
+		 Pixel(x,y).Reset(r,g,b,1.0);
+         error = error + deltaerr;
+         if(error>=0.5)
+		 {
+			 if(deltay>0) y = y + 1;
+			 else y = y - 1;
+
+             error = error - 1.0;
+		 }
+	 }
+	 if(x0>3 && x0<width-3 && y0>3 && y0<height-3)
+	 {
+		 for(int x=x0-3;x<=x0+3;x++)
+		 {
+			 for(int y=y0-3;y<=y0+3;y++)
+			 {
+				 Pixel(x,y).Reset(r,g,b,1.0);
+			 }
+		 }
+	 }
+}
+
 
 void R2Image::
 Harris(double sigma)
@@ -632,62 +723,95 @@ Harris(double sigma)
   //(*this) = harris;
 }
 
+double greyScalePixel(R2Image& img, int x, int y) {
 
-/*
- * input: int x, -1 <= x <= 1
- *        int y, -1 <= y <= 1
- * output: weights, which are calculated as such:
- *  {     0, -1/4,     0}
- *  { -1/4,     2,  -1/4}
- *  {     0, -1/4,     0}
- */
- double SharpenKernel(int x, int y) {
-   if(x == 0 && y == 0) {
-     return 2.0;
-   } else if(x == 0 || y == 0) {
-     return -0.25;
-   } else {
-     return 0;
-   }
- }
-
-void R2Image::
-Sharpen()
-{
-  // alloc image
-  R2Image oldImg(*this);
-
-  // half pixel to be added after computation
-  R2Pixel halfPix(0.5,0.5,0.5,1);
-
-  // for all the pixels in the image
-  for(int x = 1; x < width - 3; x++) {
-    for(int y = 1; y < height -3; y++) {
-      // the pixel has to be a blank slate before we put the new value
-      Pixel(x,y).Reset(0,0,0,1);
-      // find the weight thru kernel
-      for(int i = -1; i < 2; i++) {
-        for(int j = -1; j < 2; j++) {
-          // new image's pixel is calculated using the kernel
-          Pixel(x,y) += oldImg.Pixel(x+i,y+j) * SharpenKernel(i,j);
-          Pixel(i,j) += halfPix; // add half pix
-        }
-      }
-      Pixel(x,y).Clamp();
-    }
+  double* comps = img[x][y].Components();
+  double sum = 0;
+  // sum up rgb
+  for(int i = 0; i < 3; i++) {
+    sum += comps[i];
   }
-
+  // return the average of the values = greyscale
+  return sum / 3;
 }
 
+double GetSSDOf(R2Image* I0, R2Image* I1, Point feature, int pointx, int pointy, int radius) {
+  double sum = 0;
+  double grey0;
+  double grey1;
+  double diff;
+  for(int i = -1 * radius; i <= radius; i++) {
+    for(int j = -1 * radius; j <= radius; j++) {
+      grey0 = greyScalePixel(*I0, feature.x + i, feature.y + j);
+      grey1 = greyScalePixel(*I1, pointx + i, pointy + j);
+      diff = grey0 - grey1;
+      sum += diff * diff;
+    }
+  }
+  return sum;
+}
+
+void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
+    std::vector<Point> &features, std::unordered_map<int,Point> &trackedFeatures) {
+  int width = featureImage->Width();
+  int height = featureImage->Height();
+  int windowX = (int) (0.2f * width);
+  int windowY = (int) (0.2f * height);
+
+  int sigma = 2;
+  int radius = 6 * sigma + 3;
+
+  R2Image harris = generateHarrisImage(featureImage, sigma);
+
+  getFeaturePoints(&harris, features, numFeaturePoints);
+
+  for(int i = 0; i < numFeaturePoints; i++) {
+    Point curFeature = features[i];
+    int startX = std::max(radius, curFeature.x - (windowX / 2));
+    int startY = std::max(radius, curFeature.y - (windowY / 2));
+    int endX = std::min(width - radius, curFeature.x + (windowX / 2));
+    int endY = std::min(height - radius, curFeature.y + (windowY / 2));
+
+    Point bestSoFar;
+    double DOUBLE_MAX = std::numeric_limits<double>::max();
+    bestSoFar.RGBsum = DOUBLE_MAX;
+
+    for(int i = startX; i < endX; i++) {
+      for(int j = startY; j < endY; j++) {
+        double ssd = GetSSDOf(featureImage, compareImage, curFeature, i, j, radius);
+        if(ssd < bestSoFar.RGBsum) {
+          bestSoFar.RGBsum = ssd;
+          bestSoFar.x = i;
+          bestSoFar.y = j;
+        }
+      }
+    }
+    if(bestSoFar.RGBsum != DOUBLE_MAX) {
+      trackedFeatures[i] = bestSoFar;
+    }
+  }
+  return;
+}
 
 void R2Image::
 blendOtherImageTranslated(R2Image * otherImage)
 {
+  const int numFeaturePoints = 150;
+  std::vector<Point> features(numFeaturePoints);
+  std::unordered_map<int, Point> trackedFeatures(numFeaturePoints);
+  track(this, otherImage, numFeaturePoints, features, trackedFeatures);
+  *this = *otherImage;
+
+  for(int i = 0; i < numFeaturePoints; i++) {
+    if(trackedFeatures.count(i) > 0) {
+      line(features[i].x, trackedFeatures[i].x,
+        features[i].y, trackedFeatures[i].y,
+        0, 1, 0);
+      MarkPoints(*this, features[i], R2Pixel(1, 0, 1, 1));
+    }
+  }
 	// find at least 100 features on this image, and another 100 on the "otherImage". Based on these,
 	// compute the matching translation (pixel precision is OK), and blend the translated "otherImage"
-	// into this image with a 50% opacity.
-	fprintf(stderr, "fit other image using translation and blend imageB over imageA\n");
-	return;
 }
 
 void R2Image::
