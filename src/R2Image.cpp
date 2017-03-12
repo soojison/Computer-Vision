@@ -15,6 +15,7 @@
 #include <vector>
 #include <unordered_map>
 #include <limits>
+#include <iostream>
 
 
 
@@ -709,9 +710,6 @@ void R2Image::line(int x0, int x1, int y0, int y1, float r, float g, float b)
 void R2Image::
 Harris(double sigma)
 {
-    // Harris corner detector. Make use of the previously developed filters, such as the Gaussian blur filter
-	// Output should be 50% grey at flat regions, white at corners and black/dark near edges
-  //const int numFeaturePoint = 150;
   R2Image harris = generateHarrisImage(this, sigma);
 
   const int numFeaturePoints = 150;
@@ -755,6 +753,7 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
     std::vector<Point> &features, std::unordered_map<int,Point> &trackedFeatures) {
   int width = featureImage->Width();
   int height = featureImage->Height();
+  // 20% image size search window
   int windowX = (int) (0.2f * width);
   int windowY = (int) (0.2f * height);
 
@@ -767,22 +766,21 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
 
   for(int i = 0; i < numFeaturePoints; i++) {
     Point curFeature = features[i];
-    int startX = std::max(radius, curFeature.x - (windowX / 2));
-    int startY = std::max(radius, curFeature.y - (windowY / 2));
-    int endX = std::min(width - radius, curFeature.x + (windowX / 2));
-    int endY = std::min(height - radius, curFeature.y + (windowY / 2));
-
+    int startX = std::max(radius, curFeature.x - windowX/2);
+    int startY = std::max(radius, curFeature.y - windowY/2);
+    int endX = std::min(width-radius, curFeature.x + windowX/2);
+    int endY = std::min(height-radius, curFeature.y + windowY/2);
     Point bestSoFar;
     double DOUBLE_MAX = std::numeric_limits<double>::max();
     bestSoFar.RGBsum = DOUBLE_MAX;
 
-    for(int i = startX; i < endX; i++) {
-      for(int j = startY; j < endY; j++) {
-        double ssd = GetSSDOf(featureImage, compareImage, curFeature, i, j, radius);
+    for(int j = startX; j < endX; j++) {
+      for(int k = startY; k < endY; k++) {
+        double ssd = GetSSDOf(featureImage, compareImage, curFeature, j, k, radius);
         if(ssd < bestSoFar.RGBsum) {
           bestSoFar.RGBsum = ssd;
-          bestSoFar.x = i;
-          bestSoFar.y = j;
+          bestSoFar.x = j;
+          bestSoFar.y = k;
         }
       }
     }
@@ -807,11 +805,9 @@ blendOtherImageTranslated(R2Image * otherImage)
       line(features[i].x, trackedFeatures[i].x,
         features[i].y, trackedFeatures[i].y,
         0, 1, 0);
-      MarkPoints(*this, features[i], R2Pixel(1, 0, 1, 1));
+      //MarkPoints(*this, features[i], R2Pixel(1, 0, 1, 1));
     }
   }
-	// find at least 100 features on this image, and another 100 on the "otherImage". Based on these,
-	// compute the matching translation (pixel precision is OK), and blend the translated "otherImage"
 }
 
 void R2Image::
