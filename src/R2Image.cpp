@@ -553,6 +553,7 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
 
   R2Pixel ix;
   R2Pixel iy;
+  printf("Calculating matrices... ");
   for(int i = 0; i < width; i++) {
     for(int j = 0; j < height; j++) {
       ix = Ix2[i][j];
@@ -562,6 +563,7 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
       Iy2[i][j] = iy * iy;
     }
   }
+  printf("Completed\n");
 
   Ix2.Blur(sigma);
   Iy2.Blur(sigma);
@@ -569,6 +571,7 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
 
   R2Pixel gray(0.5, 0.5, 0.5, 1);
   R2Pixel tmp;
+  printf("Transforming the image... ");
   for(int i = 0; i < width; i++) {
     for(int j = 0; j < height; j++) {
       tmp = Ix2[i][j] * Iy2[i][j]
@@ -580,6 +583,7 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
       harrisImg.SetPixel(i,j,tmp);
     }
   }
+  printf("Completed\n");
   return harrisImg;
 }
 
@@ -631,6 +635,7 @@ void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int nu
   }
 
   int numPointsSoFar = 0;
+  printf("Fetching feature points... ");
   while(numPointsSoFar < numFeaturePoints) {
     // get the point with highest priority so far
     Point p = pq.top();
@@ -649,6 +654,7 @@ void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int nu
     }
     pq.pop();
   }
+  printf("Completed\n");
 }
 
 void MarkPoints(R2Image &img, Point p, R2Pixel color) {
@@ -721,9 +727,8 @@ Harris(double sigma)
   //(*this) = harris;
 }
 
-double greyScalePixel(R2Image& img, int x, int y) {
-
-  double* comps = img[x][y].Components();
+double greyScalePixel(R2Pixel pix) {
+  double* comps = pix.Components();
   double sum = 0;
   // sum up rgb
   for(int i = 0; i < 3; i++) {
@@ -733,15 +738,17 @@ double greyScalePixel(R2Image& img, int x, int y) {
   return sum / 3;
 }
 
-double GetSSDOf(R2Image* I0, R2Image* I1, Point feature, int pointx, int pointy, int radius) {
+double GetSSDOf(R2Image* I0, R2Image* I1, Point feature, 
+    int pointx, int pointy, int radius) {
   double sum = 0;
   double grey0;
   double grey1;
   double diff;
+
   for(int i = -1 * radius; i <= radius; i++) {
     for(int j = -1 * radius; j <= radius; j++) {
-      grey0 = greyScalePixel(*I0, feature.x + i, feature.y + j);
-      grey1 = greyScalePixel(*I1, pointx + i, pointy + j);
+      grey0 = greyScalePixel(I0->Pixel(feature.x + i,feature.y + j));
+      grey1 = greyScalePixel(I1->Pixel(pointx + i,pointy + j));
       diff = grey0 - grey1;
       sum += diff * diff;
     }
@@ -765,6 +772,7 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
   getFeaturePoints(&harris, features, numFeaturePoints);
 
   for(int i = 0; i < numFeaturePoints; i++) {
+    printf("Tracking point %d of 150", i);
     Point curFeature = features[i];
     int startX = std::max(radius, curFeature.x - windowX/2);
     int startY = std::max(radius, curFeature.y - windowY/2);
@@ -773,10 +781,12 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
     Point bestSoFar;
     double DOUBLE_MAX = std::numeric_limits<double>::max();
     bestSoFar.RGBsum = DOUBLE_MAX;
+    double ssd;
 
     for(int j = startX; j < endX; j++) {
       for(int k = startY; k < endY; k++) {
-        double ssd = GetSSDOf(featureImage, compareImage, curFeature, j, k, radius);
+        
+        ssd = GetSSDOf(featureImage, compareImage, curFeature, j, k, radius);
         if(ssd < bestSoFar.RGBsum) {
           bestSoFar.RGBsum = ssd;
           bestSoFar.x = j;
@@ -787,7 +797,10 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
     if(bestSoFar.RGBsum != DOUBLE_MAX) {
       trackedFeatures[i] = bestSoFar;
     }
+    std::cout<<'\r';
+    std::cout.flush();
   }
+  printf("Tracking point 150 of 150... Completed\n");
   return;
 }
 
@@ -805,7 +818,7 @@ blendOtherImageTranslated(R2Image * otherImage)
       line(features[i].x, trackedFeatures[i].x,
         features[i].y, trackedFeatures[i].y,
         0, 1, 0);
-      //MarkPoints(*this, features[i], R2Pixel(1, 0, 1, 1));
+      MarkPoints(*this, features[i], R2Pixel(1, 0, 1, 1));
     }
   }
 }
