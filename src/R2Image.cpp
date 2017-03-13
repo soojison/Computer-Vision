@@ -8,6 +8,7 @@
 #include "R2Pixel.h"
 #include "R2Image.h"
 #include "svd.h"
+#include "GreyscaleGrid.cpp"
 
 #include <vector>
 #include <algorithm>
@@ -541,6 +542,7 @@ HighPassSharpen(double sigma, double contrast)
 }
 
 R2Image generateHarrisImage(R2Image* orig, double sigma) {
+  printf("Getting Harris image... ");
   R2Image Ix2(*orig);
   R2Image Iy2(*orig);
   int width = orig->Width();
@@ -553,7 +555,6 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
 
   R2Pixel ix;
   R2Pixel iy;
-  printf("Calculating matrices... ");
   for(int i = 0; i < width; i++) {
     for(int j = 0; j < height; j++) {
       ix = Ix2[i][j];
@@ -563,7 +564,6 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
       Iy2[i][j] = iy * iy;
     }
   }
-  printf("Completed\n");
 
   Ix2.Blur(sigma);
   Iy2.Blur(sigma);
@@ -571,7 +571,6 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
 
   R2Pixel gray(0.5, 0.5, 0.5, 1);
   R2Pixel tmp;
-  printf("Transforming the image... ");
   for(int i = 0; i < width; i++) {
     for(int j = 0; j < height; j++) {
       tmp = Ix2[i][j] * Iy2[i][j]
@@ -583,7 +582,7 @@ R2Image generateHarrisImage(R2Image* orig, double sigma) {
       harrisImg.SetPixel(i,j,tmp);
     }
   }
-  printf("Completed\n");
+  printf("Done\n");
   return harrisImg;
 }
 
@@ -654,7 +653,7 @@ void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int nu
     }
     pq.pop();
   }
-  printf("Completed\n");
+  printf("Done\n");
 }
 
 void MarkPoints(R2Image &img, Point p, R2Pixel color) {
@@ -671,45 +670,45 @@ void MarkPoints(R2Image &img, Point p, R2Pixel color) {
 
 void R2Image::line(int x0, int x1, int y0, int y1, float r, float g, float b)
 {
-	if(x0>x1)
-	{
-		int x=y1;
-		y1=y0;
-		y0=x;
+  if(x0>x1)
+  {
+    int x=y1;
+    y1=y0;
+    y0=x;
 
-		x=x1;
-		x1=x0;
-		x0=x;
-	}
-     int deltax = x1 - x0;
-     int deltay = y1 - y0;
-     float error = 0;
-     float deltaerr = 0.0;
-	 if(deltax!=0) deltaerr =fabs(float(float(deltay) / deltax));    // Assume deltax != 0 (line is not vertical),
-           // note that this division needs to be done in a way that preserves the fractional part
-     int y = y0;
-     for(int x=x0;x<=x1;x++)
-	 {
-		 Pixel(x,y).Reset(r,g,b,1.0);
-         error = error + deltaerr;
-         if(error>=0.5)
-		 {
-			 if(deltay>0) y = y + 1;
-			 else y = y - 1;
+    x=x1;
+    x1=x0;
+    x0=x;
+  }
+  int deltax = x1 - x0;
+  int deltay = y1 - y0;
+  float error = 0;
+  float deltaerr = 0.0;
+  if(deltax!=0) deltaerr =fabs(float(float(deltay) / deltax));    // Assume deltax != 0 (line is not vertical),
+  // note that this division needs to be done in a way that preserves the fractional part
+  int y = y0;
+  for(int x=x0;x<=x1;x++)
+  {
+    Pixel(x,y).Reset(r,g,b,1.0);
+    error = error + deltaerr;
+    if(error>=0.5)
+    {
+      if(deltay>0) y = y + 1;
+      else y = y - 1;
 
-             error = error - 1.0;
-		 }
-	 }
-	 if(x0>3 && x0<width-3 && y0>3 && y0<height-3)
-	 {
-		 for(int x=x0-3;x<=x0+3;x++)
-		 {
-			 for(int y=y0-3;y<=y0+3;y++)
-			 {
-				 Pixel(x,y).Reset(r,g,b,1.0);
-			 }
-		 }
-	 }
+      error = error - 1.0;
+    }
+  }
+  if(x0>3 && x0<width-3 && y0>3 && y0<height-3)
+  {
+    for(int x=x0-3;x<=x0+3;x++)
+    {
+      for(int y=y0-3;y<=y0+3;y++)
+      {
+        Pixel(x,y).Reset(r,g,b,1.0);
+      }
+    }
+  }
 }
 
 
@@ -727,28 +726,16 @@ Harris(double sigma)
   //(*this) = harris;
 }
 
-double greyScalePixel(R2Pixel pix) {
-  double* comps = pix.Components();
-  double sum = 0;
-  // sum up rgb
-  for(int i = 0; i < 3; i++) {
-    sum += comps[i];
-  }
-  // return the average of the values = greyscale
-  return sum / 3;
-}
-
-double GetSSDOf(R2Image* I0, R2Image* I1, Point feature, 
-    int pointx, int pointy, int radius) {
+double GetSSDOf(GreyscaleGrid& I0, GreyscaleGrid& I1, Point feature, 
+  int pointx, int pointy, int radius) {
   double sum = 0;
   double grey0;
   double grey1;
   double diff;
-
   for(int i = -1 * radius; i <= radius; i++) {
     for(int j = -1 * radius; j <= radius; j++) {
-      grey0 = greyScalePixel(I0->Pixel(feature.x + i,feature.y + j));
-      grey1 = greyScalePixel(I1->Pixel(pointx + i,pointy + j));
+      grey0 = I0.get(feature.x+i, feature.y+j);
+      grey1 = I1.get(pointx + i,pointy + j);
       diff = grey0 - grey1;
       sum += diff * diff;
     }
@@ -765,28 +752,33 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
   int windowY = (int) (0.2f * height);
 
   int sigma = 2;
-  int radius = 6 * sigma + 3;
+  int radius = 6 * sigma + 1;
 
   R2Image harris = generateHarrisImage(featureImage, sigma);
 
   getFeaturePoints(&harris, features, numFeaturePoints);
 
+  printf("Calculating greyscale images... ");
+  GreyscaleGrid thisImg = GreyscaleGrid(*featureImage);
+  GreyscaleGrid otherImg = GreyscaleGrid(*compareImage);
+  printf("Done\n");
+
+  double DOUBLE_MAX = std::numeric_limits<double>::max();
+  Point bestSoFar;
+  
   for(int i = 0; i < numFeaturePoints; i++) {
-    printf("Tracking point %d of 150", i);
+    printf("Tracking point %d of 150", i+1);
     Point curFeature = features[i];
     int startX = std::max(radius, curFeature.x - windowX/2);
     int startY = std::max(radius, curFeature.y - windowY/2);
     int endX = std::min(width-radius, curFeature.x + windowX/2);
     int endY = std::min(height-radius, curFeature.y + windowY/2);
-    Point bestSoFar;
-    double DOUBLE_MAX = std::numeric_limits<double>::max();
     bestSoFar.RGBsum = DOUBLE_MAX;
     double ssd;
 
     for(int j = startX; j < endX; j++) {
       for(int k = startY; k < endY; k++) {
-        
-        ssd = GetSSDOf(featureImage, compareImage, curFeature, j, k, radius);
+        ssd = GetSSDOf(thisImg, otherImg, curFeature, j, k, radius);
         if(ssd < bestSoFar.RGBsum) {
           bestSoFar.RGBsum = ssd;
           bestSoFar.x = j;
@@ -800,7 +792,7 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
     std::cout<<'\r';
     std::cout.flush();
   }
-  printf("Tracking point 150 of 150... Completed\n");
+  printf("Tracking point 150 of 150... Done\n");
   return;
 }
 
