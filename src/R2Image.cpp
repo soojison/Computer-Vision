@@ -658,7 +658,7 @@ void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int nu
 
 void MarkPoints(R2Image &img, Point p, R2Pixel color) {
 
-  const int size = 5;
+  const int size = 3;
   for(int i = -1 * size; i <= size; i++) {
     for(int j = -1 * size; j <= size; j++) {
       int x = ValWithinBound(p.x + i, 0, img.Width());
@@ -716,31 +716,38 @@ void R2Image::
 Harris(double sigma)
 {
   R2Image harris = generateHarrisImage(this, sigma);
+  int width = (this)->Width();
+  int height = (this)->Height();
+  int windowX = (int) (0.2f * width);
+  int windowY = (int) (0.2f * height);
 
   const int numFeaturePoints = 150;
   std::vector<Point> featurePoints(numFeaturePoints);
-  getFeaturePoints(&harris, featurePoints, numFeaturePoints, 0, 0);
+  //without Border
+  //getFeaturePoints(&harris, featurePoints, numFeaturePoints, 0, 0);
+  //with Border
+  getFeaturePoints(&harris, featurePoints, numFeaturePoints, windowX, windowY);
   for(int i = 0; i < numFeaturePoints; i++) {
-    MarkPoints(*this, featurePoints[i], R2Pixel(1, 0, 1, 1));
+    MarkPoints(*this, featurePoints[i], R2Pixel(1, 0, 1, 0.5));
   }
   //(*this) = harris;
 }
 
-double GetSSDOf(GreyscaleGrid& I0, GreyscaleGrid& I1, Point feature, 
+double GetSSDOf(R2Image* I0, R2Image* I1, Point feature, 
   int pointx, int pointy, int radius) {
-  double sum = 0;
-  double grey0;
-  double grey1;
-  double diff;
+  double* comp0;
+  double* comp1;
+  double diff = 0;
   for(int i = -1 * radius; i <= radius; i++) {
     for(int j = -1 * radius; j <= radius; j++) {
-      grey0 = I0.get(feature.x+i, feature.y+j);
-      grey1 = I1.get(pointx + i,pointy + j);
-      diff = grey0 - grey1;
-      sum += diff * diff;
+      comp0 = I0->Pixel(feature.x+i, feature.y+j).Components();
+      comp1 = I1->Pixel(pointx + i,pointy + j).Components();
+      for(int k = 0; k < 3; k++) {
+        diff += (comp0[k] - comp1[k]) * (comp0[k] - comp1[k]);  
+      }
     }
   }
-  return sum;
+  return diff;
 }
 
 void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
@@ -756,12 +763,10 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
 
   R2Image harris = generateHarrisImage(featureImage, sigma);
 
+  //without Border
+  //getFeaturePoints(&harris, features, numFeaturePoints, 0, 0);
+  //with Border
   getFeaturePoints(&harris, features, numFeaturePoints, windowX, windowY);
-
-  printf("Calculating greyscale images... ");
-  GreyscaleGrid thisImg = GreyscaleGrid(*featureImage);
-  GreyscaleGrid otherImg = GreyscaleGrid(*compareImage);
-  printf("Done\n");
 
   double DOUBLE_MAX = std::numeric_limits<double>::max();
   Point bestSoFar;
@@ -778,7 +783,7 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
 
     for(int j = startX; j < endX; j++) {
       for(int k = startY; k < endY; k++) {
-        ssd = GetSSDOf(thisImg, otherImg, curFeature, j, k, radius);
+        ssd = GetSSDOf(featureImage, compareImage, curFeature, j, k, radius);
         if(ssd < bestSoFar.RGBsum) {
           bestSoFar.RGBsum = ssd;
           bestSoFar.x = j;
@@ -810,7 +815,7 @@ blendOtherImageTranslated(R2Image * otherImage)
       line(features[i].x, trackedFeatures[i].x,
         features[i].y, trackedFeatures[i].y,
         0, 1, 0);
-      MarkPoints(*this, features[i], R2Pixel(1, 0, 1, 1));
+      //MarkPoints(*this, features[i], R2Pixel(1, 0, 1, 1));
     }
   }
 }
