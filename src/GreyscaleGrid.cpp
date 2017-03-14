@@ -1,5 +1,4 @@
 #include <stdlib.h>
-#include <vector>
 
 class GreyscaleGrid {
   public:
@@ -30,7 +29,7 @@ GreyscaleGrid(R2Image& img) {
       for(int k = 0; k < 3; k++) {
         sum += comps[i];
       }
-      grid[i*height + j] = sum/3;
+      grid[i*height+ j] = sum/3;
     }
   }
 }

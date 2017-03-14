@@ -601,7 +601,7 @@ struct PointComparator {
 
 
 
-void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int numFeaturePoints) {
+void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int numFeaturePoints, int borderX, int borderY ) {
   int width = harris->Width();
   int height = harris->Height();
   const int minDistance = 20;
@@ -622,8 +622,8 @@ void getFeaturePoints(R2Image* harris, std::vector<Point> &featurePoints, int nu
   // fill out the PQ with the pixels' info
   // since we are using a PQ, the points should be ordered
   // based on their priority -- intensity of the pixel
-  for(int i = 0; i < width; i++) {
-    for(int j = 0; j < height; j++) {
+  for(int i = borderX; i < width-borderX; i++) {
+    for(int j = borderY; j < height - borderY; j++) {
       R2Pixel cur = harris->Pixel(i,j);
       Point p;
       p.x = i;
@@ -719,7 +719,7 @@ Harris(double sigma)
 
   const int numFeaturePoints = 150;
   std::vector<Point> featurePoints(numFeaturePoints);
-  getFeaturePoints(&harris, featurePoints, numFeaturePoints);
+  getFeaturePoints(&harris, featurePoints, numFeaturePoints, 0, 0);
   for(int i = 0; i < numFeaturePoints; i++) {
     MarkPoints(*this, featurePoints[i], R2Pixel(1, 0, 1, 1));
   }
@@ -756,7 +756,7 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
 
   R2Image harris = generateHarrisImage(featureImage, sigma);
 
-  getFeaturePoints(&harris, features, numFeaturePoints);
+  getFeaturePoints(&harris, features, numFeaturePoints, windowX, windowY);
 
   printf("Calculating greyscale images... ");
   GreyscaleGrid thisImg = GreyscaleGrid(*featureImage);
