@@ -11,5 +11,5 @@ input/
 output/
 
 # Ignore the HW submission files
-SoojiSonHW/
+SoojiSonHW*/
 *.zip
