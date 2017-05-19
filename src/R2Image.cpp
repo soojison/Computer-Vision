@@ -17,6 +17,7 @@
 #include <unordered_map>
 #include <limits>
 #include <iostream>
+#include <random>
 
 
 
@@ -724,16 +725,16 @@ Harris(double sigma)
   const int numFeaturePoints = 150;
   std::vector<Point> featurePoints(numFeaturePoints);
   //without Border
-  //getFeaturePoints(&harris, featurePoints, numFeaturePoints, 0, 0);
+  getFeaturePoints(&harris, featurePoints, numFeaturePoints, 0, 0);
   //with Border
-  getFeaturePoints(&harris, featurePoints, numFeaturePoints, windowX, windowY);
+  //getFeaturePoints(&harris, featurePoints, numFeaturePoints, windowX, windowY);
   for(int i = 0; i < numFeaturePoints; i++) {
     MarkPoints(*this, featurePoints[i], R2Pixel(1, 0, 1, 0.5));
   }
   //(*this) = harris;
 }
 
-double GetSSDOf(R2Image* I0, R2Image* I1, Point feature, 
+double GetSSDOf(R2Image* I0, R2Image* I1, Point feature,
   int pointx, int pointy, int radius) {
   double* comp0;
   double* comp1;
@@ -743,7 +744,7 @@ double GetSSDOf(R2Image* I0, R2Image* I1, Point feature,
       comp0 = I0->Pixel(feature.x+i, feature.y+j).Components();
       comp1 = I1->Pixel(pointx + i,pointy + j).Components();
       for(int k = 0; k < 3; k++) {
-        diff += (comp0[k] - comp1[k]) * (comp0[k] - comp1[k]);  
+        diff += (comp0[k] - comp1[k]) * (comp0[k] - comp1[k]);
       }
     }
   }
@@ -764,13 +765,13 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
   R2Image harris = generateHarrisImage(featureImage, sigma);
 
   //without Border
-  //getFeaturePoints(&harris, features, numFeaturePoints, 0, 0);
+  getFeaturePoints(&harris, features, numFeaturePoints, 0, 0);
   //with Border
-  getFeaturePoints(&harris, features, numFeaturePoints, windowX, windowY);
+  //getFeaturePoints(&harris, features, numFeaturePoints, windowX, windowY);
 
   double DOUBLE_MAX = std::numeric_limits<double>::max();
   Point bestSoFar;
-  
+
   for(int i = 0; i < numFeaturePoints; i++) {
     printf("Tracking point %d of 150", i+1);
     Point curFeature = features[i];
@@ -799,6 +800,73 @@ void track(R2Image * featureImage, R2Image * compareImage, int numFeaturePoints,
   }
   printf("Tracking point 150 of 150... Done\n");
   return;
+}
+
+void R2Image::
+trackWithRANSAC(R2Image *other) {
+
+  int numFeaturePoints = 150;
+  std::vector<Point> features(numFeaturePoints);
+  std::unordered_map<int, Point> trackedFeatures(numFeaturePoints);
+  track(this, other, numFeaturePoints, features, trackedFeatures);
+
+  int numTrials = 100;
+  double acceptThreshold = 4;
+  int numInliers = 4;
+
+  int bestNumMatches = -1;
+  double bestAvgDeltaX = 0;
+  double bestAvgDeltaY = 0;
+
+  printf("Running RANSAC... ");
+  for(int trial = 0; trial < numTrials; trial++) {
+    int inlier[numInliers];
+    double avgDeltaX = 0;
+    double avgDeltaY = 0;
+    for(int i = 0; i < numInliers; i++) {
+      inlier[i] = std::rand() % numFeaturePoints;
+      avgDeltaX += trackedFeatures[inlier[i]].x - features[inlier[i]].x;
+      avgDeltaY += trackedFeatures[inlier[i]].y - features[inlier[i]].y;
+    }
+    avgDeltaX /= numInliers;
+    avgDeltaY /= numInliers;
+
+    int numMatches = 0;
+    for(int i = 0; i < numFeaturePoints; i++) {
+      if(trackedFeatures.count(inlier[i]) > 0) {
+        double deltaX =  trackedFeatures[inlier[i]].x - features[inlier[i]].x;
+
+        double deltaY =  trackedFeatures[inlier[i]].y - features[inlier[i]].y;
+        if(std::abs(deltaX - avgDeltaX) <= acceptThreshold
+            && std::abs(deltaY - avgDeltaY) <= acceptThreshold) {
+          numMatches++;
+        }
+      }
+    }
+    if (numMatches > bestNumMatches) {
+      bestNumMatches = numMatches;
+      bestAvgDeltaX = avgDeltaX;
+      bestAvgDeltaY = avgDeltaY;
+    }
+  }
+  printf("Done\n");
+
+  for(int i = 0; i < numFeaturePoints; i++) {
+    if(trackedFeatures.count(i) > 0) {
+      double deltaX = trackedFeatures[i].x - features[i].x;
+      double deltaY = trackedFeatures[i].y - features[i].y;
+      if(std::abs(deltaX - bestAvgDeltaX) <= acceptThreshold
+          && std::abs(deltaY - bestAvgDeltaY) <= acceptThreshold) {
+        line(features[i].x, trackedFeatures[i].x,
+            features[i].y, trackedFeatures[i].y,
+            0, 1, 0);
+      } else {
+         line(features[i].x, trackedFeatures[i].x,
+            features[i].y, trackedFeatures[i].y,
+            1, 0, 0);
+      }
+    }
+  }
 }
 
 void R2Image::

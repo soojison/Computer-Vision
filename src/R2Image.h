@@ -77,6 +77,7 @@ class R2Image {
   void line(int x0, int x1, int y0, int y1, float r, float g, float b);
   // further operations
   void blendOtherImageTranslated(R2Image * otherImage);
+  void trackWithRANSAC(R2Image *other);
   void blendOtherImageHomography(R2Image * otherImage);
 
   // Extra credits

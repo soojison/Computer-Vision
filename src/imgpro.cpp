@@ -44,6 +44,7 @@ static char options[] =
 "  -blur <real:sigma>\n"
 "  -sharpen \n"
 "  -matchTranslation <file:other_image>\n"
+"  -RANSAC <file:other_image>\n"
 "  -matchHomography <file:other_image>\n"
 "  -highPassSharpen <real:sigma> <real:contrast>\n";
 
@@ -218,6 +219,13 @@ main(int argc, char **argv)
       R2Image *other_image = new R2Image(argv[1]);
       argv += 2, argc -= 2;
       image->blendOtherImageHomography(other_image);
+      delete other_image;
+    }
+    else if(!strcmp(*argv, "-RANSAC")) {
+      CheckOption(*argv, argc, 2);
+      R2Image *other_image = new R2Image(argv[1]);
+      argv += 2, argc -= 2;
+      image->trackWithRANSAC(other_image);
       delete other_image;
     }
     else if (!strcmp(*argv, "-highPassSharpen")) {
